@@ -1,0 +1,187 @@
+npx create-expo-app logistics-scanner --template blank-typescript
+cd logistics-scanner
+npm install expo-barcode-scanner @react-native-async-storage/async-storage expo-speech expo-haptics expo-av
+export const theme = {
+  colors: {
+    background: '#0A0A0A',
+    primary: '#FFD700',
+    success: '#22C55E',
+    danger: '#EF4444',
+    text: '#FFD700',
+    textLight: '#FFFFFF',
+  },
+  sizes: {
+    title: 48,
+    large: 36,
+    medium: 28,
+    buttonHeight: 110,
+    padding: 28,
+  }
+};
+// src/screens/ScanScreen.tsx
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions, Vibration } from 'react-native';
+import { BarCodeScanner } from 'expo-barcode-scanner';
+import * as Speech from 'expo-speech';
+import * as Haptics from 'expo-haptics';
+import { theme } from '../theme';
+
+const { width } = Dimensions.get('window');
+
+export default function ScanScreen() {
+  const [scanned, setScanned] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
+
+  useEffect(() => {
+    Speech.speak("Mở máy quét. Đưa mã vạch vào khung.", { language: 'vi' });
+  }, []);
+
+  const speak = (text: string) => {
+    Speech.speak(text, { language: 'vi', pitch: 1.0, rate: 0.9 });
+  };
+
+  const handleBarCodeScanned = async ({ data }: any) => {
+    if (scanned) return;
+    
+    setScanned(true);
+    Vibration.vibrate([0, 200, 100, 200]); // Rung mạnh
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    speak(`Đã quét thành công. Mã đơn hàng ${data}`);
+
+    Alert.alert(
+      "✅ QUÉT THÀNH CÔNG!",
+      `Mã đơn: ${data}\n\nTrạng thái: Đang cập nhật...`,
+      [
+        { 
+          text: "✅ XÁC NHẬN & TIẾP TỤC", 
+          onPress: () => {
+            setScanned(false);
+            speak("Sẵn sàng quét đơn hàng tiếp theo");
+          }
+        }
+      ],
+      { cancelable: false }
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.header}>MÁY QUÉT ĐƠN HÀNG</Text>
+      <Text style={styles.subHeader}>Chú đưa mã vạch vào khung giữa màn hình</Text>
+
+      <View style={styles.scannerContainer}>
+        <BarCodeScanner
+          onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+          style={styles.scanner}
+        />
+        
+        <View style={styles.overlayFrame}>
+          <Text style={styles.frameText}>KHUNG QUÉT</Text>
+        </View>
+      </View>
+
+      {/* Nút bấm cực lớn */}
+      <View style={styles.buttonArea}>
+        <TouchableOpacity 
+          style={styles.bigButton}
+          onPress={() => {
+            setScanned(false);
+            speak("Đang quét lại");
+          }}
+        >
+          <Text style={styles.buttonText}>📸 QUÉT LẠI</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.bigButton, styles.completeBtn]}
+          onPress={() => speak("Chuyến hàng đã hoàn thành. Nghỉ ngơi nhé chú!")}
+        >
+          <Text style={styles.buttonText}>✅ HOÀN THÀNH CHUYẾN</Text>
+        </TouchableOpacity>
+      </View>
+
+      {isOffline && (
+        <Text style={styles.offlineText}>⚠️ Đang ở chế độ Offline - Dữ liệu sẽ đồng bộ sau</Text>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    padding: theme.sizes.padding,
+  },
+  header: {
+    fontSize: theme.sizes.title,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    textAlign: 'center',
+    marginTop: 30,
+  },
+  subHeader: {
+    fontSize: theme.sizes.medium,
+    color: '#CCCCCC',
+    textAlign: 'center',
+    marginVertical: 16,
+  },
+  scannerContainer: {
+    flex: 1,
+    marginVertical: 20,
+    borderRadius: 28,
+    overflow: 'hidden',
+    borderWidth: 6,
+    borderColor: theme.colors.primary,
+  },
+  scanner: { flex: 1 },
+  overlayFrame: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -120 }, { translateY: -60 }],
+    borderWidth: 4,
+    borderColor: '#FFD700',
+    width: 240,
+    height: 140,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+  },
+  frameText: {
+    color: '#FFD700',
+    fontSize: 26,
+    fontWeight: 'bold',
+  },
+  buttonArea: {
+    gap: 20,
+    marginBottom: 30,
+  },
+  bigButton: {
+    height: theme.sizes.buttonHeight,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.7,
+    shadowRadius: 10,
+    elevation: 12,
+  },
+  completeBtn: {
+    backgroundColor: theme.colors.success,
+  },
+  buttonText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  offlineText: {
+    textAlign: 'center',
+    color: '#FFAA00',
+    fontSize: 22,
+    marginTop: 10,
+  },
+});
